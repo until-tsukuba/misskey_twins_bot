@@ -1,18 +1,19 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"encoding/xml"
+	"flag"
+	"fmt"
 	"log"
-	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"time"
-	"bytes"
-	"fmt"
 
-	"golang.org/x/tools/blog/atom"
 	"github.com/pelletier/go-toml/v2"
+	"golang.org/x/tools/blog/atom"
 )
 
 type NotePayload struct {
@@ -32,6 +33,12 @@ type NotePayload struct {
 	ChannelId *[]string `json:"channelId,omitempty"`
 }
 
+type IPayload struct {
+	Id string `json:"id"`
+	CreatedAt string `json:"createdAt"`
+	UpdatedAt string `json:"UpdatedAt"`
+}
+
 type MisskeyConfig struct {
 	AccessToken string `toml:"token"`
 	URL string `toml:"url"`
@@ -42,41 +49,59 @@ type Config struct {
 }
 
 func main() {
-	config_file, err := os.OpenFile("./config.toml", os.O_RDONLY, 0444)
+	var (
+		config_file_path = flag.String("config", "config.toml", "config file's path")
+	)
+	config_file, err := os.Open(*config_file_path)
 	if err != nil {
-		log.Printf("config error: %v\n", err)
+		log.Fatalf("config error: %v\n", err)
 	}
 	config := new(Config)
 	if err := toml.NewDecoder(config_file).Decode(config); err != nil {
-		log.Printf("config error: %v\n", err)
+		log.Fatalf("config error: %v\n", err)
+	}
+	server_url := new(url.URL)
+	server_url.Host = config.Misskey.URL
+	server_url.Scheme = "https"
+
+	w := new(bytes.Buffer)
+	if err = json.NewEncoder(w).Encode(
+			&struct{I string `json:"i"`}{I: config.Misskey.AccessToken},
+		); err != nil {
+			log.Fatalf("time err: %v\n", err)
+			os.Exit(1)
+			return
+	}
+	server_url.Path = "/api/i"
+	client := new(http.Client)
+	resp, err := client.Post(server_url.String(), "application/json", w)
+	if err != nil {
+		log.Fatalf("user data fetch error: %s\n", resp.Status)
+	}
+	body := new(IPayload)
+	if err = json.NewDecoder(resp.Body).Decode(body); err != nil {
+		log.Fatalf("time err: %v\n", err)
+		os.Exit(1)
+		return
 	}
 
-	client := new(http.Client)
-	resp, err := client.Get("https://mkobayashime.github.io/twins-announcements/twins-announcements-atom1.xml")
+	resp, err = client.Get("https://mkobayashime.github.io/twins-announcements/twins-announcements-atom1.xml")
 	if err != nil {
-		log.Printf("feed error: %s\n", resp.Status)
+		log.Fatalf("feed error: %s\n", resp.Status)
 	}
 
 	var feed atom.Feed
 	if err = xml.NewDecoder(resp.Body).Decode(&feed); err != nil {
-		log.Printf("feed read error: %v\n", err)
+		log.Fatalf("feed read error: %v\n", err)
 	}
 
-	f, err := os.OpenFile("./.cache/lastupdate", os.O_RDWR | os.O_CREATE, 0664)
+	last_update, err := time.Parse(time.RFC3339Nano, body.UpdatedAt)
 	if err != nil {
-		log.Printf("file err: %v\n", err)
-	}
-	defer f.Close()
-	data_str, _ := io.ReadAll(f)
-	data_str = data_str[:len(data_str)-1]
-
-	last_update, err := time.Parse(time.RFC3339Nano, string(data_str))
-	if err != nil {
-		log.Printf("time.parse() last_update err: %v\n", err)
+		log.Fatalf("time.parse() last_update err: %v\n", err)
 	}
 	feed_updated, _ := time.Parse(time.RFC3339Nano, string(feed.Updated))
 	if err != nil {
-		log.Printf("time.parse() feed_updated err: %v\n", err)
+		log.Fatalf("time.parse() feed_updated err: %v\n", err)
 	}
 
 	if !last_update.Before(feed_updated) {
@@ -97,28 +122,22 @@ func main() {
 
 		w := new(bytes.Buffer)
 		if err != json.NewEncoder(w).Encode(payload) {
-			log.Printf("time err: %v\n", err)
+			log.Fatalf("time err: %v\n", err)
 			os.Exit(1)
 			return
 		}
-		req, _ := http.NewRequest(http.MethodPost, "https://misskey.until.tsukuba.one/api/notes/create", w)
-		req.Header.Add("Content-Type", "application/json")
-		log.Println(w.String())
-		resp, err := client.Do(req)
+		server_url.Path = "/api/notes/create"
+		resp, err := client.Post(server_url.String(), "application/json", w)
 		if err != nil {
-			log.Printf("misskey err: %v. id: %s\n", err, entry.ID)
+			log.Fatalf("misskey err: %v. id: %s\n", err, entry.ID)
 			os.Exit(1)
 			return
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			log.Print("misskey err: %v. id: %s. status: %d\n", err, entry.ID, resp.StatusCode)
+			log.Fatalf("misskey err: %v. id: %s. status: %d\n", err, entry.ID, resp.StatusCode)
 			os.Exit(1)
 			return
 		}
 	}
-	f.Truncate(0)
-	f.WriteString(
-		fmt.Sprintf("%s\n", time.Now().Format(time.RFC3339Nano)),
-	)
 }
