@@ -106,25 +106,28 @@ func main() {
 		log.Fatalf("feed read error: %v\n", err)
 	}
 
-	last_update, err := time.Parse(time.RFC3339Nano, body.UpdatedAt)
-	if err != nil {
-		log.Fatalf("time.parse() last_update err: %v\n", err)
+	accountLastUpdate := time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
+	if len(body) != 0 {
+		accountLastUpdate, err = time.Parse(time.RFC3339, body[0].CreatedAt)
+		if err != nil {
+			log.Fatalf("time.parse() last_update err: %v\n", err)
+		}
 	}
-	feed_updated, _ := time.Parse(time.RFC3339Nano, string(feed.Updated))
+	feed_updated, err := time.Parse(time.RFC3339Nano, string(feed.Updated))
 	if err != nil {
 		log.Fatalf("time.parse() feed_updated err: %v\n", err)
 	}
 
-	if !last_update.Before(feed_updated) {
-		os.Exit(0)
+	if !accountLastUpdate.Before(feed_updated) {
+		log.Println("found no new article")
 		return
 	}
 
+	var entryUpdated time.Time
 	for _, entry := range feed.Entry {
-		feed_updated, _ = time.Parse(time.RFC3339Nano, string(entry.Updated))
-		if !last_update.Before(feed_updated) {
-			os.Exit(0)
-			return
+		entryUpdated, err = time.Parse(time.RFC3339Nano, string(entry.Updated))
+		if err == nil && !accountLastUpdate.Before(entryUpdated) {
+			continue
 		}
 		payload := new(NotePayload)
 		payload.Visibility = "public"
