@@ -17,20 +17,20 @@ import (
 )
 
 type NotePayload struct {
-	AccessToken string `json:"i"`
-	Visibility string `json:"visibility"`
-	VisibleUserIds []string `json:"visibleUserIds,omitempty"`
-	Text string `json:"text"`
-	CW *string `json:"cw,omitempty"`
-	LocalOnly bool `json:"localOnly"`
-	NoExtractMentions bool `json:"noExtractMentions"`
-	NoExtractHashtags bool `json:"noExtractHashtags"`
-	NoExtractEmojis bool `json:"noExtractEmojis"`
-	Poll *interface{} `json:"poll,omitempty"`
-	FileIds *[]string `json:"fileIds,omitempty"`
-	MediaIds *[]string `json:"mediaIds,omitempty"`
-	RenoteId *[]string `json:"renoteId,omitempty"`
-	ChannelId *[]string `json:"channelId,omitempty"`
+	AccessToken       string       `json:"i"`
+	Visibility        string       `json:"visibility"`
+	VisibleUserIds    []string     `json:"visibleUserIds,omitempty"`
+	Text              string       `json:"text"`
+	CW                *string      `json:"cw,omitempty"`
+	LocalOnly         bool         `json:"localOnly"`
+	NoExtractMentions bool         `json:"noExtractMentions"`
+	NoExtractHashtags bool         `json:"noExtractHashtags"`
+	NoExtractEmojis   bool         `json:"noExtractEmojis"`
+	Poll              *interface{} `json:"poll,omitempty"`
+	FileIds           *[]string    `json:"fileIds,omitempty"`
+	MediaIds          *[]string    `json:"mediaIds,omitempty"`
+	RenoteId          *[]string    `json:"renoteId,omitempty"`
+	ChannelId         *[]string    `json:"channelId,omitempty"`
 }
 
 type UsersNotesRequestPayload struct {
