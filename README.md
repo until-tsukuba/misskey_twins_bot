@@ -6,8 +6,9 @@
 
 ``` toml
 [misskey]
-url = "misskley.until.tsukuba.one"
+url = "misskey.until.tsukuba.one"
 token = "{{ access token }}"
+userId = "{{ userId }}" # maybe aid, aidx, objectid, or ulid format string probably
 ```
 
 1. `go build main`

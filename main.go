@@ -33,15 +33,22 @@ type NotePayload struct {
 	ChannelId *[]string `json:"channelId,omitempty"`
 }
 
-type IPayload struct {
-	Id string `json:"id"`
+type UsersNotesRequestPayload struct {
+	UserId      string `json:"userId"`
+	WithReplies bool   `json:"withReplies"`
+	WithRenotes bool   `json:"withRenotes"`
+	Limit       int    `json:"limit"`
+}
+
+type UsersNotesResponsePayload struct {
+	Id        string `json:"id"`
 	CreatedAt string `json:"createdAt"`
-	UpdatedAt string `json:"UpdatedAt"`
 }
 
 type MisskeyConfig struct {
 	AccessToken string `toml:"token"`
-	URL string `toml:"url"`
+	URL         string `toml:"url"`
+	UserId      string `toml:"userId"`
 }
 
 type Config struct {
@@ -65,23 +72,27 @@ func main() {
 	server_url.Scheme = "https"
 
 	w := new(bytes.Buffer)
-	if err = json.NewEncoder(w).Encode(
-			&struct{I string `json:"i"`}{I: config.Misskey.AccessToken},
-		); err != nil {
-			log.Fatalf("time err: %v\n", err)
-			os.Exit(1)
-			return
+	userNotesReqPayload := &UsersNotesRequestPayload{
+		UserId:      config.Misskey.UserId,
+		WithReplies: false,
+		WithRenotes: false,
+		Limit:       1,
 	}
-	server_url.Path = "/api/i"
+
+	if err = json.NewEncoder(w).Encode(userNotesReqPayload); err != nil {
+		log.Fatalf("time err: %v\n", err)
+		return
+	}
+	server_url.Path = "/api/users/notes"
 	client := new(http.Client)
 	resp, err := client.Post(server_url.String(), "application/json", w)
 	if err != nil {
 		log.Fatalf("user data fetch error: %s\n", resp.Status)
+		return
 	}
-	body := new(IPayload)
-	if err = json.NewDecoder(resp.Body).Decode(body); err != nil {
-		log.Fatalf("time err: %v\n", err)
-		os.Exit(1)
+	body := make([]UsersNotesResponsePayload, 1)
+	if err = json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		log.Fatalf("decode err: %v\n", err)
 		return
 	}
 
