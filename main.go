@@ -96,7 +96,7 @@ func main() {
 		return
 	}
 
-	resp, err = client.Get("https://mkobayashime.github.io/twins-announcements/twins-announcements-atom1.xml")
+	resp, err = client.Get("https://until.tsukuba.dev/twins-announcements/atom.xml")
 	if err != nil {
 		log.Fatalf("feed error: %s\n", resp.Status)
 	}
