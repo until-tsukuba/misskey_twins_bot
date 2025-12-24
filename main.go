@@ -55,6 +55,10 @@ type Config struct {
 	Misskey MisskeyConfig `toml:"misskey"`
 }
 
+var (
+	sixWeek = time.Hour * 24 * 7 * 6
+)
+
 func main() {
 	var (
 		config_file_path = flag.String("config", "config.toml", "config file's path")
@@ -124,9 +128,19 @@ func main() {
 	}
 
 	var entryUpdated time.Time
+	now := time.Now()
 	for _, entry := range feed.Entry {
 		entryUpdated, err = time.Parse(time.RFC3339Nano, string(entry.Updated))
-		if err == nil && !accountLastUpdate.Before(entryUpdated) {
+		if err != nil {
+			log.Fatalf("entry's updatedAt parse error: %s\n", err)
+			return
+		}
+		// 6週間以上経過した投稿は投稿しない
+		dur := entryUpdated.Sub(now)
+		if dur < 0 {
+			dur = -1 * dur // 絶対値に直す
+		}
+		if sixWeek <= dur || !accountLastUpdate.Before(entryUpdated) {
 			continue
 		}
 		payload := new(NotePayload)
